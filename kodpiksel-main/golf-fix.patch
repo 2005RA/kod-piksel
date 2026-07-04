@@ -1,0 +1,113 @@
+diff --git a/src/components/RaceLeaderboard.jsx b/src/components/RaceLeaderboard.jsx
+index 6df9f80..bf45a85 100644
+--- a/src/components/RaceLeaderboard.jsx
++++ b/src/components/RaceLeaderboard.jsx
+@@ -8,7 +8,10 @@ import { useRewards } from '../context/RewardContext';
+ 
+ const MEDAL = ['🥇', '🥈', '🥉'];
+ 
+-function formatScore(row) {
++function formatScore(row, isGolf) {
++  if (isGolf) {
++    return row.char_count != null ? `${row.char_count} simvol` : '';
++  }
+   if (row.time_taken != null) {
+     const m = Math.floor(row.time_taken / 60);
+     const s = row.time_taken % 60;
+@@ -18,7 +21,8 @@ function formatScore(row) {
+ }
+ 
+ export default function RaceLeaderboard({ race, currentUserId, refetchOnMount }) {
+-  const { rows, loading, error, refetch } = useRaceLeaderboard(race?.id, race?.endsAt);
++  const isGolf = race?.type === 'golf';
++  const { rows, loading, error, refetch } = useRaceLeaderboard(race?.id, race?.endsAt, race?.type);
+   const userRank = rows.findIndex(r => r.user_id === currentUserId) + 1;
+   const { checkRaceRewards } = useRewards();
+   const timeLeft = useCountdown(race?.endsAt, checkRaceRewards);
+@@ -65,7 +69,7 @@ export default function RaceLeaderboard({ race, currentUserId, refetchOnMount })
+                     {row.profiles?.username ?? 'İstifadəçi'}
+                     {isMe && <span className="rl-you-badge"> sən</span>}
+                   </span>
+-                  <span className="rl-score">{formatScore(row)}</span>
++                  <span className="rl-score">{formatScore(row, isGolf)}</span>
+                   <span className="rl-chips">+{row.chips_earned}🖥️</span>
+                 </div>
+               );
+diff --git a/src/hooks/useLeaderboard.js b/src/hooks/useLeaderboard.js
+index add8395..86404ff 100644
+--- a/src/hooks/useLeaderboard.js
++++ b/src/hooks/useLeaderboard.js
+@@ -73,12 +73,13 @@ export function useLeaderboard(currentUserId) {
+ 
+ // ── PER-RACE LEADERBOARD ─────────────────────────────────
+ // Filters by ends_at so each "run" of a race has its own leaderboard.
+-export function useRaceLeaderboard(raceId, endsAt) {
++export function useRaceLeaderboard(raceId, endsAt, raceType) {
+   const [rows, setRows]       = useState([]);
+   const [loading, setLoading] = useState(true);
+   const [error, setError]     = useState(null);
+   const [tick, setTick]       = useState(0);
+   const refetch = () => setTick(t => t + 1);
++  const isGolf = raceType === 'golf';
+ 
+   useEffect(() => {
+     if (!raceId || !endsAt) return;
+@@ -89,11 +90,11 @@ export function useRaceLeaderboard(raceId, endsAt) {
+       try {
+         const { data, error } = await supabase
+           .from('race_results')
+-          .select('id, user_id, time_taken, chips_earned, completed_at, profiles(username, avatar_emoji, level)')
++          .select('id, user_id, time_taken, char_count, chips_earned, completed_at, profiles(username, avatar_emoji, level)')
+           .eq('race_id', raceId)
+           .eq('ends_at', new Date(endsAt).toISOString())
+           .eq('completed', true)
+-          .order('time_taken', { ascending: true })
++          .order(isGolf ? 'char_count' : 'time_taken', { ascending: true })
+           .order('completed_at', { ascending: true })
+           .limit(50);
+ 
+@@ -117,7 +118,7 @@ export function useRaceLeaderboard(raceId, endsAt) {
+ 
+     fetch();
+     return () => { cancelled = true; };
+-  }, [raceId, endsAt, tick]);
++  }, [raceId, endsAt, tick, isGolf]);
+ 
+   return { rows, loading, error, refetch };
+ }
+\ No newline at end of file
+diff --git a/src/pages/RaceWorkspace.jsx b/src/pages/RaceWorkspace.jsx
+index 6b6c4c6..63ecb4d 100644
+--- a/src/pages/RaceWorkspace.jsx
++++ b/src/pages/RaceWorkspace.jsx
+@@ -201,7 +201,7 @@ export default function RaceWorkspace({ race, onBack }) {
+       if (race.type === 'speed') setFinishTime(elapsed);
+ 
+       // Save to Supabase — keyed by (user_id, race_id, ends_at)
+-      const { computeRaceResult: _unused, ..._ } = { computeRaceResult };
++      const { char_count } = computeRaceResult(race, elapsed, code);
+       const { data: { user } } = await supabase.auth.getUser();
+       if (user) {
+         await supabase
+@@ -212,6 +212,7 @@ export default function RaceWorkspace({ race, onBack }) {
+             ends_at:      endsAtISO,
+             completed:    true,
+             time_taken:   elapsed,
++            char_count,
+             chips_earned: race.chips ?? 0,
+             completed_at: new Date().toISOString(),
+           }, { onConflict: 'user_id,race_id,ends_at' });
+diff --git a/src/utils/raceScore.js b/src/utils/raceScore.js
+index b27fc9e..648a1d1 100644
+--- a/src/utils/raceScore.js
++++ b/src/utils/raceScore.js
+@@ -8,7 +8,8 @@
+  * @returns {{ score: number, char_count: number|null }}
+  */
+ export function computeRaceResult(race, elapsed, code = '') {
+-  const charCount = code.length;
++  // Match the whitespace-stripped count shown live in <CharCounter> during the race.
++  const charCount = code.replace(/\s/g, '').length;
+ 
+   switch (race.type) {
+     case 'speed':

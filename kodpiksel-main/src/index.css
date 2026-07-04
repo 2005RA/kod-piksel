@@ -1,0 +1,23 @@
+@import url(https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap);
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy:      #0D1B2A;
+    --navy2:     #142235;
+    --teal:      #00D4AA;
+    --teal2:     #00b891;
+    --amber:     #F4A600;
+    --amber2:    #c98900;
+    --white:     #EEF4F8;
+    --muted:     #7A9BB5;
+    --card-bg:   #192D43;
+    --rank-bg:   #0A1622;
+    --sidebar-w: 64px;
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--navy);
+    color: var(--white);
+    overflow-x: hidden;
+  }
