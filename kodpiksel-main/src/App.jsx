@@ -151,11 +151,11 @@ export default function App() {
         <Route path="/" element={<HomeRoute />} />
         <Route path="/profil" element={profile
           ? <ProfilePage onBack={() => navigate('/')} />
-          : <LoginPage   onBack={() => navigate('/')} onSwitch={() => navigate('/register')} />} />
+          : <LoginPage   onBack={() => navigate('/')} onSwitch={() => navigate('/register')} onForgotPassword={() => navigate('/forgot-password')} />} />
         <Route path="/notebook" element={<Notebook />} />
         <Route path="/puzzle" element={<PixelPuzzle />} />
         <Route path="/register" element={<RegisterPage onBack={() => navigate('/')} onSwitch={() => navigate('/login')} />} />
-        <Route path="/login" element={<LoginPage onBack={() => navigate('/')} onSwitch={() => navigate('/register')} />} />
+        <Route path="/login" element={<LoginPage onBack={() => navigate('/')} onSwitch={() => navigate('/register')} onForgotPassword={() => navigate('/forgot-password')} />} />
         <Route path="/courses" element={<CoursesPage onBack={() => navigate('/')} onCourseClick={(id) => navigate(`/courses/${id}`)} />} />
         <Route path="/courses/:courseId" element={<CourseRoute />} />
         <Route path="/courses/:courseId/lesson/:lessonId" element={<LevelGate><LessonRoute /></LevelGate>} />

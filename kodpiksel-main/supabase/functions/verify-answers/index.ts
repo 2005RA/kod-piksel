@@ -1,6 +1,6 @@
 // supabase/functions/verify-answers/index.ts
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { compare } from 'npm:bcryptjs@2.4.3';
+import bcrypt from 'npm:bcryptjs@2.4.3';
 import { corsHeaders } from '../_shared/cors.ts';
 
 const admin = createClient(
@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
 
     for (const a of answers) {
       const row = stored.find(s => s.question_id === a.questionId);
-      const ok = row && await compare((a.answer || '').trim().toLowerCase(), row.answer_hash);
+      const ok = row && await bcrypt.compare((a.answer || '').trim().toLowerCase(), row.answer_hash);
       if (!ok) return json({ error: 'Cavablar yanlışdır.' }, 401);
     }
 

@@ -1,6 +1,6 @@
 // supabase/functions/register/index.ts
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { hash } from 'npm:bcryptjs@2.4.3';
+import bcrypt from 'npm:bcryptjs@2.4.3';
 import { corsHeaders } from '../_shared/cors.ts';
 
 const admin = createClient(
@@ -66,27 +66,35 @@ Deno.serve(async (req) => {
 
     // Belt-and-suspenders: make sure the profiles row has these fields
     // even if the on-signup trigger lags or doesn't read user_metadata.
-    await admin
+    const { error: profileErr } = await admin
       .from('profiles')
-      .update({ username: cleanUsername, age: ageNum, avatar_emoji: avatarEmoji })
-      .eq('id', userId);
+      .upsert(
+        { id: userId, username: cleanUsername, age: ageNum, avatar_emoji: avatarEmoji },
+        { onConflict: 'id' }
+      );
+    if (profileErr) {
+      console.error('profile upsert failed:', profileErr);
+      await admin.auth.admin.deleteUser(userId).catch(() => {});
+      return json({ error: 'Qeydiyyat uğursuz oldu, yenidən cəhd et.' }, 500);
+    }
 
     const rows = await Promise.all(
       QUESTION_IDS.map(async (qid) => ({
         user_id: userId,
         question_id: qid,
-        answer_hash: await hash(answerMap.get(qid), 10),
+         answer_hash: await bcrypt.hash(answerMap.get(qid), 10),
       }))
     );
     const { error: ansErr } = await admin.from('security_answers').insert(rows);
     if (ansErr) {
-      // Don't leave an orphaned account with no recovery answers.
-      await admin.auth.admin.deleteUser(userId);
+      console.error('security_answers insert failed:', ansErr);
+      await admin.auth.admin.deleteUser(userId).catch(() => {});
       return json({ error: 'Qeydiyyat uğursuz oldu, yenidən cəhd et.' }, 500);
     }
 
     return json({ success: true });
-  } catch {
+  } catch (e) {
+    console.error('register crashed:', e);
     return json({ error: 'Gözlənilməz xəta baş verdi.' }, 500);
   }
 });
