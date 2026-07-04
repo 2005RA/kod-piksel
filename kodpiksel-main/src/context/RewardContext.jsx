@@ -244,6 +244,10 @@ export function RewardProvider({ children }) {
       keys: merged.key, chips: merged.chip, hourglasses: merged.hourglass, level,
       completed_tasks: [...mergedTasks],
     });
+    if (guest.rewards.chip > 0) {
+      logChipEvent(guest.rewards.chip, 'guest_merge');
+      window.dispatchEvent(new CustomEvent('chips-updated'));
+    }
     clearGuestProgress();
   }, [user, profile]);
 

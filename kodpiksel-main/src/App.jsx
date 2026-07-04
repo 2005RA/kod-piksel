@@ -118,7 +118,7 @@ export default function App() {
   const [notifOpen,    setNotifOpen]    = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { hasNewPixel } = usePuzzle();
-  const { profile } = useAuth();
+  const { profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   function handleNav(page) {
@@ -149,9 +149,11 @@ export default function App() {
 
       <Routes>
         <Route path="/" element={<HomeRoute />} />
-        <Route path="/profil" element={profile
-          ? <ProfilePage onBack={() => navigate('/')} />
-          : <LoginPage   onBack={() => navigate('/')} onSwitch={() => navigate('/register')} onForgotPassword={() => navigate('/forgot-password')} />} />
+        <Route path="/profil" element={authLoading
+          ? null
+          : profile
+            ? <ProfilePage onBack={() => navigate('/')} />
+            : <LoginPage   onBack={() => navigate('/')} onSwitch={() => navigate('/register')} onForgotPassword={() => navigate('/forgot-password')} />} />
         <Route path="/notebook" element={<Notebook />} />
         <Route path="/puzzle" element={<PixelPuzzle />} />
         <Route path="/register" element={<RegisterPage onBack={() => navigate('/')} onSwitch={() => navigate('/login')} />} />
