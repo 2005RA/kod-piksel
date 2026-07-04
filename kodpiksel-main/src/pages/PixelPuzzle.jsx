@@ -1,8 +1,76 @@
 // src/pages/PixelPuzzle.jsx
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePuzzle }         from '../context/PuzzleContext';
 import { useRewards }        from '../context/RewardContext';
+import { PUZZLE_GRAND_REWARD } from '../data/rewards';
+
+// ── PAGE HEADER WITH HELP POPOVER ───────────────────────────────────────────
+function PageHeader() {
+  const [showHelp, setShowHelp] = useState(false);
+  const helpRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (helpRef.current && !helpRef.current.contains(e.target)) {
+        setShowHelp(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="pp-header">
+      <div className="pp-title-row" ref={helpRef}>
+        <p className="page-eyebrow">Piksel Tapmacası</p>
+        <button
+          type="button"
+          className="pp-help-btn"
+          onClick={() => setShowHelp(v => !v)}
+          aria-label="Məlumat"
+        >
+          ?
+        </button>
+        {showHelp && (
+          <div className="pp-help-popover">
+            Dərslərdən, yarışlardan və oyunlardan piksel qazanırsan — hər biri
+            lövhədə öz yerinə uçur. Artıq qazandığın pikselləri isə balon
+            mağazasında hədiyyələrə çevir!
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── GRAND REWARD BANNER ───────────────────────────────────────────────────────
+function GrandRewardBanner() {
+  const { chips, keys, hourglasses } = PUZZLE_GRAND_REWARD;
+  return (
+    <div className="pp-grand-banner">
+      <div className="pp-grand-icon">🏆</div>
+      <div className="pp-grand-copy">
+        <div className="pp-grand-title">Lövhəni tamamla, nəhəng bonusu qazan!</div>
+        <div className="pp-grand-sub">64 pikselin hamısı yerini tapanda bu böyük hədiyyə sənindir.</div>
+      </div>
+      <div className="pp-grand-rewards">
+        <span className="pp-grand-reward">
+          <span className="pp-grand-emoji">🖥️</span>
+          <span className="pp-grand-amount">×{chips}</span>
+        </span>
+        <span className="pp-grand-reward">
+          <span className="pp-grand-emoji">🗝️</span>
+          <span className="pp-grand-amount">×{keys}</span>
+        </span>
+        <span className="pp-grand-reward">
+          <span className="pp-grand-emoji">⏳</span>
+          <span className="pp-grand-amount">×{hourglasses}</span>
+        </span>
+      </div>
+    </div>
+  );
+}
 
 // ── PIXEL BOARD ──────────────────────────────────────────────────────────────
 function PixelBoard({ boardTarget, revealed }) {
@@ -11,10 +79,14 @@ function PixelBoard({ boardTarget, revealed }) {
   const pct      = Math.round((done / total) * 100);
 
   return (
-    <div className="pp-board-wrap">
+    <div className="pp-board-card">
       <div className="pp-board-label">
         <span>// PİKSEL LÖVHƏSI</span>
         <span className="pp-board-pct">{pct}% tamamlandı</span>
+      </div>
+
+      <div className="pp-progress-track">
+        <div className="pp-progress-fill" style={{ width: `${pct}%` }} />
       </div>
 
       <div className="pp-board">
@@ -39,7 +111,7 @@ function PixelBoard({ boardTarget, revealed }) {
 // ── BUBBLE SHOP ──────────────────────────────────────────────────────────────
 function BubbleShop({ bubbles, repeated, onClaim }) {
   return (
-    <div className="pp-shop">
+    <div className="pp-shop-card">
       <div className="pp-shop-label">// BALON MAĞAZASI</div>
       <div className="pp-repeated-count">
         <span className="pp-rep-icon">🔁</span>
@@ -56,11 +128,15 @@ function BubbleShop({ bubbles, repeated, onClaim }) {
               className={`pp-bubble${canAfford ? ' can-afford' : ' cant-afford'}`}
               style={{ '--bubble-color': b.color }}
             >
-              <div className="pp-bubble-emoji">{b.emoji}</div>
-              <div className="pp-bubble-name">{b.label}</div>
-              <div className="pp-bubble-cost">
-                <span className="pp-cost-num">{b.cost}</span>
-                <span className="pp-cost-label"> təkrar piksel</span>
+              <div className="pp-bubble-top">
+                <div className="pp-bubble-emoji">{b.emoji}</div>
+                <div>
+                  <div className="pp-bubble-name">{b.label}</div>
+                  <div className="pp-bubble-cost">
+                    <span className="pp-cost-num">{b.cost}</span>
+                    <span className="pp-cost-label"> təkrar piksel</span>
+                  </div>
+                </div>
               </div>
               <div className="pp-bubble-rewards">
                 {b.rewards.map((r, i) => (
@@ -95,13 +171,11 @@ export default function PixelPuzzle() {
   const { addReward } = useRewards();
   const testBtnRef = useRef(null);
 
-  // Clear red dot when page opens
   useEffect(() => { clearNewPixel(); }, [clearNewPixel]);
 
   function handleClaim(bubbleId) {
     const ok = claimBubble(bubbleId, addReward);
     if (!ok) return;
-    // Fly all rewards to their icons
     const b = bubbles.find(b => b.id === bubbleId);
     b?.rewards.forEach(r => {
       setTimeout(() => {
@@ -121,15 +195,9 @@ export default function PixelPuzzle() {
 
   return (
     <div className="pp-wrapper">
-      <div className="pp-header">
-        <p className="page-eyebrow">Piksel Tapmacası</p>
-        <h1 className="page-title">Piksel Lövhəni Tamamla</h1>
-        <p className="page-sub">
-          Dərslərdən, yarışlardan və oyunlardan piksel qazanırsan.
-          Hər piksel lövhədəki öz yerinə uçur. Təkrar pikselləri
-          balonlarla mükafata çevir!
-        </p>
-      </div>
+      <PageHeader />
+
+      <GrandRewardBanner />
 
       <div className="pp-layout">
         <PixelBoard boardTarget={boardTarget} revealed={revealed} />

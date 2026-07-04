@@ -32,18 +32,28 @@ function DrawingCanvas({ activeFile, fileDb, onSaveStrokes, currentTool }) {
   const last      = useRef({ x: 0, y: 0 });
   const ctxRef    = useRef(null);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const resize = () => {
-      canvas.width  = canvas.parentElement.clientWidth;
-      canvas.height = canvas.parentElement.clientHeight;
+ useEffect(() => {
+  const canvas = canvasRef.current;
+  if (!canvas) return;
+
+  const resize = () => {
+    const parent = canvas.parentElement;
+    const w = Math.round(parent.clientWidth);
+    const h = Math.round(parent.clientHeight);
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width  = w;
+      canvas.height = h;
       redrawAll(canvas, fileDb[activeFile]?.drawings ?? []);
-    };
-    resize();
-    window.addEventListener('resize', resize);
-    return () => window.removeEventListener('resize', resize);
-  }, []);
+    }
+  };
+
+  resize();
+
+  const ro = new ResizeObserver(resize);
+  ro.observe(canvas.parentElement);
+
+  return () => ro.disconnect();
+}, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -491,12 +501,12 @@ const removeSnippet = (id) => {
   // ─── STYLES ──────────────────────────────────────────────────────────────────
   const S = {
     container: {
-      width: '100%', maxWidth: 1150,
+      width: '100%', maxWidth: 1600,
       display: 'grid', gridTemplateColumns: '290px 1fr',
       background: 'var(--navy2)',
       border: '2px solid var(--border-teal)',
       boxShadow: '0 20px 40px rgba(0,0,0,0.5), 4px 4px 0 var(--teal)',
-      minHeight: 620,
+      minHeight: 'calc(100vh - 110px)',
     },
     treePanel: {
       background: 'rgba(11,15,25,0.5)',
@@ -622,7 +632,7 @@ tab: (active) => ({
       fontSize: '0.72rem', padding: '6px 12px', cursor: 'pointer',
     },
     canvasWrapper: {
-      position: 'relative', flexGrow: 1, minHeight: 460,
+      position: 'relative', flexGrow: 1, minHeight: 300,
     },
     gridBoard: {
       position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
